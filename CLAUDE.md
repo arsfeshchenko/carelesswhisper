@@ -38,6 +38,11 @@ The post-build script runs `codesign --force --deep --sign "Papuga Dev"` automat
 - The nil source is critical — prevents Option key residue from being inherited
 - If Enter adds a newline instead of submitting, increase the delay in `Paster.swift`
 
+## Git
+
+- Always use `arsfeshchenko` as the git author for this repo (email: `ars.feshchenko@gmail.com`)
+- Local git config is already set — do not change it
+
 ## Behavior
 
 - After **every** code change, always rebuild and restart the app automatically using `build.sh` — do not wait to be asked
