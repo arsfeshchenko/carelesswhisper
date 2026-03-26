@@ -1,0 +1,24 @@
+# Claude Code instructions
+CLAUDE.md
+
+# Build script (local paths)
+build.sh
+
+# Xcode
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.pbxuser
+*.mode1v2
+*.mode2v2
+*.perspectivev3
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+
+# macOS
+.DS_Store
+
+# Build output
+build/
