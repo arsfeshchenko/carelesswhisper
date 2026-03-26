@@ -22,15 +22,15 @@ final class StatusBarController {
     private(set) var state: AppState = .idle
 
     // Animation constants (matching Python)
-    private let animFPS: TimeInterval = 10
-    private let breathPeriod: TimeInterval = 0.8
+    private let animFPS: TimeInterval = 60
+    private let breathPeriod: TimeInterval = 0.35
     private let jumpPeriod: TimeInterval = 0.5
     private let maxJump: CGFloat = 2.5
-    private let scaleMin: CGFloat = 0.82
-    private let scaleMax: CGFloat = 1.0
+    private let scaleMin: CGFloat = 0.6
+    private let scaleMax: CGFloat = 1.35
     private let successDuration: TimeInterval = 1.5
     private let errorDuration: TimeInterval = 2.0
-    private let permCheckInterval = 50  // ticks (~5s at 10fps)
+    private let permCheckInterval = 300  // ticks (~5s at 60fps)
 
     // Menu items
     private var versionItem: NSMenuItem!

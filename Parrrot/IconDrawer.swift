@@ -42,8 +42,7 @@ enum IconDrawer {
     private static func makeImage(_ draw: (NSRect) -> Void) -> NSImage {
         let img = NSImage(size: NSSize(width: size, height: size))
         img.lockFocus()
-        let rect = NSRect(x: 0, y: 0, width: size, height: size)
-        draw(rect)
+        draw(NSRect(x: 0, y: 0, width: size, height: size))
         img.unlockFocus()
         img.isTemplate = true
         return img

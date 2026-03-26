@@ -152,7 +152,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
 
                     paster.paste(text: result.text, autoSubmit: Settings.autoSubmit)
-                    SoundPlayer.play(Settings.soundSuccess)
+                    // Delay Tink so it plays after paste+Enter (and after the target app's own sound)
+                    let soundDelay = Settings.autoSubmit ? 0.5 : 0.1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + soundDelay) {
+                        SoundPlayer.play(Settings.soundStart)
+                    }
                     statusBar.setState(.success)
                     log.info("Transcribed: \(result.text.prefix(50))...")
                 }

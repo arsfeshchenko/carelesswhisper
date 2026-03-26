@@ -25,7 +25,8 @@ enum Settings {
                 kSecAttrService: keychainService,
                 kSecAttrAccount: "apiKey",
                 kSecReturnData: true,
-                kSecMatchLimit: kSecMatchLimitOne
+                kSecMatchLimit: kSecMatchLimitOne,
+                kSecUseDataProtectionKeychain: true
             ]
             var result: AnyObject?
             let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -35,33 +36,33 @@ enum Settings {
             return string
         }
         set {
-            if newValue.isEmpty {
-                let query: [CFString: Any] = [
-                    kSecClass: kSecClassGenericPassword,
-                    kSecAttrService: keychainService,
-                    kSecAttrAccount: "apiKey"
-                ]
-                SecItemDelete(query as CFDictionary)
-                return
-            }
-            guard let data = newValue.data(using: .utf8) else { return }
-            // Delete any existing item first (avoids ACL mismatch from prior builds)
+            // Delete from both old (ACL-based) and new (data protection) keychain
             let deleteQuery: [CFString: Any] = [
                 kSecClass: kSecClassGenericPassword,
                 kSecAttrService: keychainService,
                 kSecAttrAccount: "apiKey"
             ]
             SecItemDelete(deleteQuery as CFDictionary)
-            // Create with nil trusted-apps list so any build of this app can read it
-            var access: SecAccess?
-            SecAccessCreate("parrrot apiKey" as CFString, nil, &access)
-            var addQuery: [CFString: Any] = [
+            let deleteQueryDP: [CFString: Any] = [
                 kSecClass: kSecClassGenericPassword,
                 kSecAttrService: keychainService,
                 kSecAttrAccount: "apiKey",
-                kSecValueData: data
+                kSecUseDataProtectionKeychain: true
             ]
-            if let access { addQuery[kSecAttrAccess] = access }
+            SecItemDelete(deleteQueryDP as CFDictionary)
+
+            if newValue.isEmpty { return }
+            guard let data = newValue.data(using: .utf8) else { return }
+
+            // Use data protection keychain — no ACL, no binary-hash binding, survives rebuilds
+            let addQuery: [CFString: Any] = [
+                kSecClass: kSecClassGenericPassword,
+                kSecAttrService: keychainService,
+                kSecAttrAccount: "apiKey",
+                kSecValueData: data,
+                kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
+                kSecUseDataProtectionKeychain: true
+            ]
             SecItemAdd(addQuery as CFDictionary, nil)
         }
     }
@@ -77,9 +78,6 @@ enum Settings {
 
     @Setting(key: "soundError", defaultValue: "Basso")
     static var soundError: String
-
-    @Setting(key: "soundSuccess", defaultValue: "Glass")
-    static var soundSuccess: String
 
     @Setting(key: "soundRetranscribe", defaultValue: "Morse")
     static var soundRetranscribe: String
