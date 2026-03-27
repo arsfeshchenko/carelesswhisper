@@ -75,8 +75,21 @@ final class StatusBarController {
     private func buildMenu() {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let buildTime = buildTimestamp()
-        versionItem = NSMenuItem(title: "CarelessWhisper \(version) · \(buildTime)", action: nil, keyEquivalent: "")
+        versionItem = NSMenuItem(title: "CarelessWhisper", action: nil, keyEquivalent: "")
         versionItem.isEnabled = false
+        versionItem.attributedTitle = {
+            let para = NSMutableParagraphStyle()
+            let title = NSMutableAttributedString(string: "CarelessWhisper\n", attributes: [
+                .font: NSFont.menuBarFont(ofSize: 0),
+                .paragraphStyle: para
+            ])
+            let subtitle = NSAttributedString(string: "\(version) · \(buildTime)", attributes: [
+                .font: NSFont.systemFont(ofSize: 10),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ])
+            title.append(subtitle)
+            return title
+        }()
         menu.addItem(versionItem)
 
         let hintItem = NSMenuItem(title: "Hold right ⌥ to record", action: nil, keyEquivalent: "")
@@ -86,7 +99,9 @@ final class StatusBarController {
                 .font: NSFont.systemFont(ofSize: 11),
                 .foregroundColor: NSColor.secondaryLabelColor
             ]
-            return NSAttributedString(string: "Hold right ⌥ to record", attributes: attrs)
+            let text = NSMutableAttributedString(string: "Hold right ⌥ Opt to record\n", attributes: attrs)
+            text.append(NSAttributedString(string: "Press ⎋ Esc to cancel", attributes: attrs))
+            return text
         }()
         menu.addItem(hintItem)
 
