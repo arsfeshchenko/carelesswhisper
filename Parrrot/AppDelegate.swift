@@ -1,7 +1,7 @@
 import Cocoa
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "App")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "App")
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBar: StatusBarController!
@@ -43,7 +43,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        log.info("parrrot launched")
+        log.info("CarelessWhisper launched")
     }
 
     private func setupMainMenu() {

@@ -1,7 +1,7 @@
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "StatusBar")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "StatusBar")
 
 enum AppState {
     case idle
@@ -75,7 +75,7 @@ final class StatusBarController {
     private func buildMenu() {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let buildTime = buildTimestamp()
-        versionItem = NSMenuItem(title: "parrrot \(version) · \(buildTime)", action: nil, keyEquivalent: "")
+        versionItem = NSMenuItem(title: "CarelessWhisper \(version) · \(buildTime)", action: nil, keyEquivalent: "")
         versionItem.isEnabled = false
         menu.addItem(versionItem)
 

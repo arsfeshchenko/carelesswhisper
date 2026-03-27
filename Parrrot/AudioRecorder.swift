@@ -1,7 +1,7 @@
 import AVFoundation
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "Audio")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Audio")
 
 final class AudioRecorder {
     private let engine = AVAudioEngine()
@@ -17,7 +17,7 @@ final class AudioRecorder {
         guard !isRecording else { return }
 
         let tempDir = NSTemporaryDirectory()
-        let fileName = "parrrot_\(UUID().uuidString).wav"
+        let fileName = "carelesswhisper_\(UUID().uuidString).wav"
         let url = URL(fileURLWithPath: tempDir).appendingPathComponent(fileName)
         recordingURL = url
 

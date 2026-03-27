@@ -1,7 +1,7 @@
 import Cocoa
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "Hotkey")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Hotkey")
 
 final class HotkeyListener {
     var onPress: (() -> Void)?

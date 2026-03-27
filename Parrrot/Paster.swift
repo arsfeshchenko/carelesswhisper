@@ -1,7 +1,7 @@
 import AppKit
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "Paster")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Paster")
 
 final class Paster {
     private static let keyV: UInt16 = 9

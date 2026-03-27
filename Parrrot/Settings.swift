@@ -2,13 +2,13 @@ import Foundation
 import Security
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "Settings")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Settings")
 
-private let keychainService = "com.arsfeshchenko.parrrot"
+private let keychainService = "com.arsfeshchenko.carelesswhisper"
 
 private var apiKeyFileURL: URL {
     let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let dir = support.appendingPathComponent("com.arsfeshchenko.parrrot", isDirectory: true)
+    let dir = support.appendingPathComponent("com.arsfeshchenko.carelesswhisper", isDirectory: true)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     return dir.appendingPathComponent("apikey")
 }

@@ -1,7 +1,7 @@
 import Foundation
 import os.log
 
-private let log = Logger(subsystem: "com.arsfeshchenko.parrrot", category: "Transcriber")
+private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Transcriber")
 
 struct TranscriptionResult {
     let text: String
