@@ -55,23 +55,11 @@ enum IconDrawer {
         }
     }
 
-    static func recording(scale: CGFloat) -> NSImage {
-        guard let img = NSImage(named: "eggmic") else {
-            return makeImage({ _ in
-                NSColor(red: 1.0, green: 0.631, blue: 0.0, alpha: 1.0).setFill()
-                eggPath().fill()
-            }, template: false)
-        }
-        let rect = NSRect(x: 0, y: 0, width: size, height: size)
-        let out = NSImage(size: NSSize(width: size, height: size))
-        out.lockFocus()
-        // Fill orange, then clip to the mic shape using destinationIn
-        NSColor(red: 1.0, green: 0.631, blue: 0.0, alpha: 1.0).setFill()
-        rect.fill()
-        img.draw(in: rect, from: .zero, operation: .destinationIn, fraction: 1.0)
-        out.unlockFocus()
-        out.isTemplate = false
-        return out
+    static func recording(opacity: CGFloat) -> NSImage {
+        makeImage({ _ in
+            NSColor(red: 1.0, green: 0.631, blue: 0.0, alpha: opacity).setFill()
+            eggPath().fill()
+        }, template: false)
     }
 
     static func processing(offsetY: CGFloat) -> NSImage {

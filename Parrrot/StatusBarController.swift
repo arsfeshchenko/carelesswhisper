@@ -246,8 +246,8 @@ final class StatusBarController {
         case .recording:
             let phase = 0.5 + 0.5 * sin(animTime / breathPeriod * 2 * .pi)
             let opacity = opacityMin + (opacityMax - opacityMin) * CGFloat(phase)
-            statusItem.button?.alphaValue = opacity
-            image = IconDrawer.recording(scale: 1.0)
+            statusItem.button?.alphaValue = 1.0
+            image = IconDrawer.recording(opacity: opacity)
         case .processing:
             statusItem.button?.alphaValue = 1.0
             statusItem.button?.contentTintColor = nil
