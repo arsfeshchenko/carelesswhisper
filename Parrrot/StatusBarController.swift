@@ -24,8 +24,6 @@ final class StatusBarController {
     // Animation constants (matching Python)
     private let animFPS: TimeInterval = 60
     private let breathPeriod: TimeInterval = 0.675
-    private let jumpPeriod: TimeInterval = 0.5
-    private let maxJump: CGFloat = 2.5
     private let opacityMin: CGFloat = 0.5
     private let opacityMax: CGFloat = 1.0
     private let successDuration: TimeInterval = 1.5
@@ -279,8 +277,7 @@ final class StatusBarController {
         case .processing:
             statusItem.button?.alphaValue = 1.0
             statusItem.button?.contentTintColor = nil
-            let offsetY = abs(sin(animTime / jumpPeriod * .pi)) * maxJump
-            image = IconDrawer.processing(offsetY: offsetY)
+            image = IconDrawer.processing(time: animTime)
         case .success:
             statusItem.button?.alphaValue = 1.0
             statusItem.button?.contentTintColor = nil
