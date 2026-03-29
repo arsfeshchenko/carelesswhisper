@@ -230,7 +230,7 @@ final class UpdateChecker: NSObject, URLSessionDownloadDelegate {
         bar.startAnimation(nil)
         content.addSubview(bar)
 
-        let btn = NSButton(frame: NSRect(x: w - 120, y: 10, width: 100, height: 32))
+        let btn = NSButton(frame: NSRect(x: w - 180, y: 10, width: 160, height: 32))
         btn.title = "Cancel"
         btn.bezelStyle = .rounded
         btn.target = self
