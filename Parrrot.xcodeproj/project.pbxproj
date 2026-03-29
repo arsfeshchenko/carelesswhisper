@@ -36,7 +36,7 @@
 		A2000001000000000000000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A2000001000000000000000C /* parrrot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = parrrot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2000001000000000000000D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A2000001000000000000000E /* Parrrot.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Parrrot.entitlements; sourceTree = "<group>"; };
+		A2000001000000000000000E /* CarelessWhisper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CarelessWhisper.entitlements; sourceTree = "<group>"; };
 		A2000001000000000000000F /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		A20000010000000000000010 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -55,13 +55,13 @@
 		A40000010000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				A40000010000000000000002 /* Parrrot */,
+				A40000010000000000000002 /* CarelessWhisper */,
 				A2000001000000000000000B /* Assets.xcassets */,
 				A40000010000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A40000010000000000000002 /* Parrrot */ = {
+		A40000010000000000000002 /* CarelessWhisper */ = {
 			isa = PBXGroup;
 			children = (
 				A20000010000000000000001 /* AppDelegate.swift */,
@@ -75,11 +75,11 @@
 				A20000010000000000000009 /* PermissionChecker.swift */,
 				A2000001000000000000000A /* Settings.swift */,
 				A2000001000000000000000D /* Info.plist */,
-				A2000001000000000000000E /* Parrrot.entitlements */,
+				A2000001000000000000000E /* CarelessWhisper.entitlements */,
 				A2000001000000000000000F /* main.swift */,
 				A20000010000000000000010 /* UpdateChecker.swift */,
 			);
-			path = Parrrot;
+			path = CarelessWhisper;
 			sourceTree = "<group>";
 		};
 		A40000010000000000000003 /* Products */ = {
@@ -109,9 +109,9 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		A50000010000000000000001 /* Parrrot */ = {
+		A50000010000000000000001 /* CarelessWhisper */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A70000010000000000000003 /* Build configuration list for PBXNativeTarget "Parrrot" */;
+			buildConfigurationList = A70000010000000000000003 /* Build configuration list for PBXNativeTarget "CarelessWhisper" */;
 			buildPhases = (
 				A60000010000000000000001 /* Sources */,
 				A30000010000000000000001 /* Frameworks */,
@@ -155,7 +155,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A50000010000000000000001 /* Parrrot */,
+				A50000010000000000000001 /* CarelessWhisper */,
 			);
 		};
 /* End PBXProject section */
@@ -310,19 +310,19 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Parrrot/Parrrot.entitlements;
+				CODE_SIGN_ENTITLEMENTS = CarelessWhisper/CarelessWhisper.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGN_IDENTITY = "CarelessWhisper Dev";
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Parrrot/Info.plist;
+				INFOPLIST_FILE = CarelessWhisper/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.12;
+				MARKETING_VERSION = 1.0.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arsfeshchenko.carelesswhisper;
 				PRODUCT_NAME = CarelessWhisper;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -334,19 +334,19 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Parrrot/Parrrot.entitlements;
+				CODE_SIGN_ENTITLEMENTS = CarelessWhisper/CarelessWhisper.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				CODE_SIGN_IDENTITY = "CarelessWhisper Dev";
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Parrrot/Info.plist;
+				INFOPLIST_FILE = CarelessWhisper/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.12;
+				MARKETING_VERSION = 1.0.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.arsfeshchenko.carelesswhisper;
 				PRODUCT_NAME = CarelessWhisper;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -366,7 +366,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A70000010000000000000003 /* Build configuration list for PBXNativeTarget "Parrrot" */ = {
+		A70000010000000000000003 /* Build configuration list for PBXNativeTarget "CarelessWhisper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A90000010000000000000003 /* Debug */,

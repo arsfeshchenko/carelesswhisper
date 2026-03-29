@@ -81,6 +81,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             try? task.run()
             NSApp.terminate(nil)
         }
+        statusBar.onAccessibilityGranted = { [weak self] in
+            log.info("Accessibility granted, restarting event tap")
+            self?.hotkeyListener.stop()
+            self?.hotkeyListener.start()
+        }
     }
 
     // MARK: - Push-to-Talk Workflow

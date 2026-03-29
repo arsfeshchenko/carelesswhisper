@@ -42,6 +42,9 @@ final class StatusBarController {
     var onAPIKeyEntered: ((String) -> Void)?
     var onRemoveAPIKey: (() -> Void)?
     var onRestart: (() -> Void)?
+    var onAccessibilityGranted: (() -> Void)?
+
+    private var wasAccessibilityGranted = false
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -80,7 +83,7 @@ final class StatusBarController {
             let titleStr = "CarelessWhisper Dev\n"
             let subtitleStr = "dev · \(version) · \(buildTime)"
             #else
-            let titleStr = "CarelessWhisper (\(version))\n"
+            let titleStr = "CarelessWhisper (\(version))"
             let subtitleStr = ""
             #endif
             let para = NSMutableParagraphStyle()
@@ -165,6 +168,11 @@ final class StatusBarController {
         let accOK = PermissionChecker.isAccessibilityGranted()
         let micOK = PermissionChecker.isMicrophoneGranted()
         let apiOK = !Settings.apiKey.isEmpty
+
+        if accOK && !wasAccessibilityGranted {
+            wasAccessibilityGranted = true
+            onAccessibilityGranted?()
+        }
 
         accessibilityItem.title = "\(accOK ? "✓" : "  ")  Accessibility"
         microphoneItem.title = "\(micOK ? "✓" : "  ")  Microphone"
