@@ -113,6 +113,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func onHotkeyRelease() {
         guard audioRecorder.isRecording else { return }
 
+        // Check if Shift is held — suppresses auto-submit for this message
+        let shiftHeld = CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
+
         cancelMaxRecordingTimer()
         guard let result = audioRecorder.stop() else {
             statusBar.setState(.idle)
@@ -129,7 +132,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        processRecording(url: result.url)
+        processRecording(url: result.url, suppressAutoSubmit: shiftHeld)
     }
 
     private func onHotkeyCancel() {
@@ -140,7 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         log.info("Recording cancelled")
     }
 
-    private func processRecording(url: URL) {
+    private func processRecording(url: URL, suppressAutoSubmit: Bool = false) {
         isProcessing = true
         statusBar.setState(.processing)
 
@@ -153,12 +156,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         SoundPlayer.play(Settings.soundRetranscribe)
                     }
 
-                    paster.paste(text: result.text, autoSubmit: Settings.autoSubmit)
-                    // Delay Tink so it plays after paste+Enter (and after the target app's own sound)
-                    let soundDelay = Settings.autoSubmit ? 0.5 : 0.1
-                    DispatchQueue.main.asyncAfter(deadline: .now() + soundDelay) {
-                        SoundPlayer.play(Settings.soundStart)
-                    }
+                    let autoSubmit = suppressAutoSubmit ? false : Settings.autoSubmit
+                    SoundPlayer.play(Settings.soundStart)
+                    paster.paste(text: result.text, autoSubmit: autoSubmit)
                     statusBar.setState(.success)
                     log.info("Transcribed: \(result.text.prefix(50))...")
                 }

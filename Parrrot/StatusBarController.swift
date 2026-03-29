@@ -110,6 +110,12 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
+        let updateItem = NSMenuItem(title: "Check for Updates", action: #selector(onClickCheckUpdate), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+
+        menu.addItem(.separator())
+
         accessibilityItem = NSMenuItem(title: "    Accessibility", action: #selector(onPermClick(_:)), keyEquivalent: "")
         accessibilityItem.target = self
         accessibilityItem.tag = 0
@@ -232,6 +238,10 @@ final class StatusBarController {
 
     @objc private func onClickListen() {
         NSWorkspace.shared.open(URL(string: "https://youtube.com/shorts/WkRH_4wJbhw?si=Lb0LnlyNzJfTMKMp")!)
+    }
+
+    @objc private func onClickCheckUpdate() {
+        UpdateChecker.check()
     }
 
     @objc private func onClickRestart() {
