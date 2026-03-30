@@ -24,7 +24,14 @@ echo "→ Signing with Developer ID..."
 find "$DEST" -name "*.dylib" -exec codesign --force --sign "$CERT" {} \;
 codesign --force --sign "$CERT" "$DEST"
 
-echo "→ Creating zip (for auto-update)..."
+echo "→ Notarizing..."
+cd /Applications && zip -r "$ZIP" CarelessWhisper.app
+cd - > /dev/null
+xcrun notarytool submit "$ZIP" --keychain-profile "CarelessWhisper" --wait
+xcrun stapler staple "$DEST"
+
+echo "→ Re-creating zip after stapling..."
+rm -f "$ZIP"
 cd /Applications && zip -r "$ZIP" CarelessWhisper.app
 cd - > /dev/null
 
