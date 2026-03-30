@@ -38,17 +38,17 @@ cd - > /dev/null
 echo "→ Creating DMG installer..."
 DMG_TMP="$HOME/CarelessWhisper-rw.dmg"
 DMG_DIR=$(mktemp -d)
-BG_IMG="$SCRIPT_DIR/dmg_background.jpeg"
+BG_IMG="$SCRIPT_DIR/dmg_background.png"
 
 # Stage DMG contents
 cp -R "$DEST" "$DMG_DIR/"
 ln -s /Applications "$DMG_DIR/Applications"
 mkdir -p "$DMG_DIR/.background"
-cp "$BG_IMG" "$DMG_DIR/.background/bg.jpeg"
+cp "$BG_IMG" "$DMG_DIR/.background/bg.png"
 
-# Background image is 1280x807; window uses half that for Retina
+# Background image is 1280x812 (2x for Retina); window = 640x406
 WIN_W=640
-WIN_H=404
+WIN_H=406
 APP_X=155
 APP_Y=200
 APPS_X=485
@@ -77,7 +77,7 @@ tell application "Finder"
         set viewOptions to the icon view options of container window
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to ${ICON_SIZE}
-        set background picture of viewOptions to file ".background:bg.jpeg"
+        set background picture of viewOptions to file ".background:bg.png"
         set position of item "CarelessWhisper.app" of container window to {${APP_X}, ${APP_Y}}
         set position of item "Applications" of container window to {${APPS_X}, ${APPS_Y}}
         update without registering applications
