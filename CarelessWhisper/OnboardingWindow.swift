@@ -107,6 +107,8 @@ final class OnboardingWindow: NSObject {
         }
 
         stepLabel.stringValue = "Step \(currentStep + 1) of 3"
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
 
         switch currentStep {
         case 0:
@@ -141,7 +143,7 @@ final class OnboardingWindow: NSObject {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
             if status == .notDetermined {
                 PermissionChecker.requestMicrophoneAccess { [weak self] _ in
-                    DispatchQueue.main.async { self?.updateUI() }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { self?.updateUI() }
                 }
             } else {
                 // Already denied or restricted — open Settings
@@ -199,7 +201,7 @@ final class OnboardingWindow: NSObject {
     // MARK: - Polling
 
     private func startPolling() {
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             self?.updateUI()
         }
     }
