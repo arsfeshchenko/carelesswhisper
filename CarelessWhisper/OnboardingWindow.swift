@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import os.log
 
 private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Onboarding")
@@ -109,10 +110,16 @@ final class OnboardingWindow: NSObject {
 
         switch currentStep {
         case 0:
+            let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
             statusIcon.stringValue = "🎙"
             titleLabel.stringValue = "Enable Microphone"
-            descLabel.stringValue = "CarelessWhisper needs microphone access to record your voice for transcription.\n\nClick the button below to grant access."
-            actionButton.title = "Grant Microphone Access"
+            if micStatus == .notDetermined {
+                descLabel.stringValue = "CarelessWhisper needs microphone access to record your voice for transcription.\n\nClick the button below to grant access."
+                actionButton.title = "Grant Microphone Access"
+            } else {
+                descLabel.stringValue = "CarelessWhisper needs microphone access to record your voice for transcription.\n\nOpen System Settings and enable Microphone for CarelessWhisper."
+                actionButton.title = "Open Microphone Settings"
+            }
         case 1:
             statusIcon.stringValue = "🔐"
             titleLabel.stringValue = "Enable Accessibility"
@@ -131,12 +138,14 @@ final class OnboardingWindow: NSObject {
     @objc private func onAction() {
         switch currentStep {
         case 0:
-            PermissionChecker.requestMicrophoneAccess { [weak self] granted in
-                DispatchQueue.main.async {
-                    if granted {
-                        self?.updateUI()
-                    }
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            if status == .notDetermined {
+                PermissionChecker.requestMicrophoneAccess { [weak self] _ in
+                    DispatchQueue.main.async { self?.updateUI() }
                 }
+            } else {
+                // Already denied or restricted — open Settings
+                PermissionChecker.openMicrophoneSettings()
             }
         case 1:
             PermissionChecker.openAccessibilitySettings()
