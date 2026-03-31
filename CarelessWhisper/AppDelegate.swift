@@ -32,6 +32,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let needsOnboarding = !PermissionChecker.isMicrophoneGranted()
             || !PermissionChecker.isAccessibilityGranted()
             || Settings.apiKey.isEmpty
+            || !Settings.onboardingComplete
 
         if needsOnboarding {
             onboarding = OnboardingWindow()
@@ -39,12 +40,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.onboarding = nil
                 self?.hotkeyListener.start()
                 self?.startAudioWatchdog()
+                if Settings.autoCheckUpdates {
+                    UpdateChecker.check(silent: true)
+                }
                 log.info("Onboarding complete, app ready")
             }
             onboarding?.showIfNeeded()
         } else {
             hotkeyListener.start()
             startAudioWatchdog()
+            if Settings.autoCheckUpdates {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    UpdateChecker.check(silent: true)
+                }
+            }
         }
 
         log.info("CarelessWhisper launched")

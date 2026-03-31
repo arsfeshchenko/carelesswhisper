@@ -69,4 +69,10 @@ enum Settings {
 
     @Setting(key: "soundsEnabled", defaultValue: true)
     static var soundsEnabled: Bool
+
+    @Setting(key: "autoCheckUpdates", defaultValue: false)
+    static var autoCheckUpdates: Bool
+
+    @Setting(key: "onboardingComplete", defaultValue: false)
+    static var onboardingComplete: Bool
 }
