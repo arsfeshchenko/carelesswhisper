@@ -14,17 +14,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var maxRecordingTimer: Timer?
     private var audioWatchdogTimer: Timer?
     private var consecutiveAudioFailures = 0
+    private var onboarding: OnboardingWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         setupMainMenu()
-
-        // Prompt for Accessibility if not granted
-        if !PermissionChecker.isAccessibilityGranted() {
-            let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-            AXIsProcessTrustedWithOptions(opts)
-            log.info("Accessibility permission requested")
-        }
 
         statusBar = StatusBarController()
         hotkeyListener = HotkeyListener()
@@ -33,14 +27,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         paster = Paster()
 
         wireCallbacks()
-        hotkeyListener.start()
-        startAudioWatchdog()
 
-        // Request mic permission on first launch
-        if !PermissionChecker.isMicrophoneGranted() {
-            PermissionChecker.requestMicrophoneAccess { granted in
-                log.info("Microphone access: \(granted)")
+        // Show onboarding if any setup is incomplete
+        let needsOnboarding = !PermissionChecker.isMicrophoneGranted()
+            || !PermissionChecker.isAccessibilityGranted()
+            || Settings.apiKey.isEmpty
+
+        if needsOnboarding {
+            onboarding = OnboardingWindow()
+            onboarding?.onComplete = { [weak self] in
+                self?.onboarding = nil
+                self?.hotkeyListener.start()
+                self?.startAudioWatchdog()
+                log.info("Onboarding complete, app ready")
             }
+            onboarding?.showIfNeeded()
+        } else {
+            hotkeyListener.start()
+            startAudioWatchdog()
         }
 
         log.info("CarelessWhisper launched")
