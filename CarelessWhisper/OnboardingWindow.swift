@@ -91,7 +91,7 @@ final class OnboardingWindow: NSObject {
         v.addSubview(nextButton)
 
         // Step 4 buttons (auto-update choice) — right-aligned, equal width
-        let btnW: CGFloat = 180, btnH: CGFloat = 32, gap: CGFloat = 10
+        let btnH: CGFloat = 32, btnW: CGFloat = 170, gap: CGFloat = 10
         checkAutoButton = NSButton(frame: NSRect(x: w - btnW - 20, y: 16, width: btnW, height: btnH))
         checkAutoButton.bezelStyle = .rounded
         checkAutoButton.title = "Check Automatically"
