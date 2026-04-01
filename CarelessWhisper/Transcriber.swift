@@ -26,16 +26,13 @@ final class Transcriber {
             language: nil
         )
 
-        // If language not in allowed set, re-transcribe as Ukrainian
+        log.info("Detected language: '\(language ?? "nil")'")
+
+        // If language not in allowed set, translate to Ukrainian via GPT
         if let lang = language, !okLanguages.contains(lang.lowercased()) {
-            log.info("Detected language '\(lang)', re-transcribing as Ukrainian")
-            let (retranscribedText, _) = try await sendRequest(
-                wavURL: wavURL,
-                apiKey: apiKey,
-                responseFormat: "text",
-                language: "uk"
-            )
-            return TranscriptionResult(text: cleanText(retranscribedText), wasRetranscribed: true)
+            log.info("Detected language '\(lang)', translating to Ukrainian")
+            let translated = try await translateToUkrainian(text: text, apiKey: apiKey)
+            return TranscriptionResult(text: cleanText(translated), wasRetranscribed: true)
         }
 
         return TranscriptionResult(text: cleanText(text), wasRetranscribed: false)
@@ -102,6 +99,31 @@ final class Transcriber {
         }
     }
 
+    private func translateToUkrainian(text: String, apiKey: String) async throws -> String {
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "model": "gpt-4o-mini",
+            "messages": [
+                ["role": "system", "content": "Translate the following text to Ukrainian. Return only the translated text, nothing else."],
+                ["role": "user", "content": text]
+            ],
+            "temperature": 0
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let translated = (json?["choices"] as? [[String: Any]])?.first
+            .flatMap { $0["message"] as? [String: Any] }
+            .flatMap { $0["content"] as? String } ?? text
+        return translated
+    }
+
     private func cleanText(_ text: String) -> String {
         var t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.hasSuffix(".") {
@@ -132,3 +154,4 @@ private extension Data {
         append("\(value)\r\n".data(using: .utf8)!)
     }
 }
+
