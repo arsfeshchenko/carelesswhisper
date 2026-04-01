@@ -61,7 +61,7 @@ enum Settings {
     @Setting(key: "autoSubmit", defaultValue: false)
     static var autoSubmit: Bool
 
-    @Setting(key: "minRecordingSeconds", defaultValue: 0.3)
+    @Setting(key: "minRecordingSeconds", defaultValue: 1.0)
     static var minRecordingSeconds: Double
 
     @Setting(key: "maxRecordingSeconds", defaultValue: 300.0)
