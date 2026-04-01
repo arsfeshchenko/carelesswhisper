@@ -143,10 +143,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         SoundPlayer.play(Settings.soundStop)
 
         if result.duration < Settings.minRecordingSeconds {
-            log.info("Recording too short (\(String(format: "%.1f", result.duration))s), discarding")
+            log.info("Recording too short (\(String(format: "%.1f", result.duration))s), ignoring")
             audioRecorder.cleanup()
-            statusBar.setState(.error)
-            SoundPlayer.play(Settings.soundError)
+            statusBar.setState(.idle)
             return
         }
 

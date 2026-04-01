@@ -51,6 +51,7 @@ final class StatusBarController {
         // Snapshot current state so we don't fire onAccessibilityGranted before callbacks are wired
         wasAccessibilityGranted = PermissionChecker.isAccessibilityGranted()
         buildMenu()
+        refreshPermissions()
         statusItem.menu = menu
         updateIcon()
         startAnimation()
@@ -123,6 +124,10 @@ final class StatusBarController {
         updateItem.target = self
         menu.addItem(updateItem)
 
+        let listenItem = NSMenuItem(title: "♪  Listen to Masterpiece", action: #selector(onClickListen), keyEquivalent: "")
+        listenItem.target = self
+        menu.addItem(listenItem)
+
         menu.addItem(.separator())
 
         accessibilityItem = NSMenuItem(title: "    Accessibility", action: #selector(onPermClick(_:)), keyEquivalent: "")
@@ -146,10 +151,6 @@ final class StatusBarController {
         menu.addItem(autoSubmitItem)
 
         menu.addItem(.separator())
-
-        let listenItem = NSMenuItem(title: "♪  Listen to Masterpiece", action: #selector(onClickListen), keyEquivalent: "")
-        listenItem.target = self
-        menu.addItem(listenItem)
 
         removeApiKeyItem = NSMenuItem(title: "Remove API key", action: #selector(onClickRemoveAPIKey), keyEquivalent: "")
         removeApiKeyItem.target = self
@@ -209,14 +210,14 @@ final class StatusBarController {
         alert.addButton(withTitle: "Cancel")
 
         // Native multiline NSTextField — gets rounded bezel automatically
-        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 64))
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
         textField.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         textField.placeholderString = "sk-..."
         textField.isEditable = true
         textField.isSelectable = true
-        textField.usesSingleLineMode = false
-        textField.cell?.wraps = true
-        textField.cell?.isScrollable = false
+        textField.usesSingleLineMode = true
+        textField.cell?.wraps = false
+        textField.cell?.isScrollable = true
         let currentKey = prefill ?? (Settings.apiKey.isEmpty ? "" : Settings.apiKey)
         textField.stringValue = currentKey
 

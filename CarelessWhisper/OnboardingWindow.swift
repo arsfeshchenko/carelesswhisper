@@ -207,13 +207,13 @@ final class OnboardingWindow: NSObject {
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        let tf = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 64))
+        let tf = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
         tf.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         tf.placeholderString = "sk-..."
         tf.isEditable = true
-        tf.usesSingleLineMode = false
-        tf.cell?.wraps = true
-        tf.cell?.isScrollable = false
+        tf.usesSingleLineMode = true
+        tf.cell?.wraps = false
+        tf.cell?.isScrollable = true
         alert.accessoryView = tf
         alert.layout()
         alert.window.initialFirstResponder = tf
