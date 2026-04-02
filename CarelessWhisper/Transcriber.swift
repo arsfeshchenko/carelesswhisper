@@ -12,7 +12,7 @@ final class Transcriber {
     private let endpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
     private let okLanguages: Set<String> = ["english", "ukrainian"]
 
-    func transcribe(wavURL: URL) async throws -> TranscriptionResult {
+    func transcribe(wavURL: URL, skipTranslation: Bool = false) async throws -> TranscriptionResult {
         let apiKey = Settings.apiKey
         guard !apiKey.isEmpty else {
             throw TranscriberError.noAPIKey
@@ -28,8 +28,8 @@ final class Transcriber {
 
         log.info("Detected language: '\(language ?? "nil")'")
 
-        // If language not in allowed set, translate to Ukrainian via GPT
-        if let lang = language, !okLanguages.contains(lang.lowercased()) {
+        // If language not in allowed set, translate to Ukrainian via GPT (unless skipped)
+        if !skipTranslation, let lang = language, !okLanguages.contains(lang.lowercased()) {
             log.info("Detected language '\(lang)', translating to Ukrainian")
             let translated = try await translateToUkrainian(text: text, apiKey: apiKey)
             return TranscriptionResult(text: cleanText(translated), wasRetranscribed: true)

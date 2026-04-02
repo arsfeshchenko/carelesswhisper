@@ -13,6 +13,13 @@ final class HotkeyListener {
     private var keyWatchdogTimer: Timer?
     private(set) var isHeld = false
 
+    // Double-click-and-hold detection
+    private var lastQuickReleaseTime: Date?
+    private let doubleTapWindow: TimeInterval = 0.4
+    private let quickTapMaxDuration: TimeInterval = 0.3
+    private var pressStartTime: Date?
+    private(set) var isDoubleClickHold = false
+
     // Right Option key code = 61
     private let rightOptionKeyCode: UInt16 = 61
 
@@ -97,12 +104,30 @@ final class HotkeyListener {
             if keyCode == rightOptionKeyCode {
                 let optionDown = flags.contains(.maskAlternate)
                 if optionDown && !isHeld {
+                    // Check if this is the second tap of a double-click-and-hold
+                    if let lastRelease = lastQuickReleaseTime,
+                       Date().timeIntervalSince(lastRelease) < doubleTapWindow {
+                        isDoubleClickHold = true
+                        lastQuickReleaseTime = nil
+                        log.info("Double-click-and-hold detected — translation disabled")
+                    } else {
+                        isDoubleClickHold = false
+                    }
+                    pressStartTime = Date()
                     isHeld = true
                     startKeyWatchdog()
                     DispatchQueue.main.async { self.onPress?() }
                 } else if !optionDown && isHeld {
                     isHeld = false
                     stopKeyWatchdog()
+                    // If this was a quick tap, record the time for double-tap detection
+                    if let start = pressStartTime,
+                       Date().timeIntervalSince(start) < quickTapMaxDuration {
+                        lastQuickReleaseTime = Date()
+                    } else {
+                        lastQuickReleaseTime = nil
+                    }
+                    pressStartTime = nil
                     DispatchQueue.main.async { self.onRelease?() }
                 }
             }

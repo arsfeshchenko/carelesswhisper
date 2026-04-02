@@ -117,7 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         do {
             try audioRecorder.start()
-            SoundPlayer.play(Settings.soundStart)
+            SoundPlayer.play(hotkeyListener.isDoubleClickHold ? "Morse" : Settings.soundStart)
             statusBar.setState(.recording)
             startMaxRecordingTimer()
             log.info("Recording started")
@@ -133,6 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Check if Shift is held — suppresses auto-submit for this message
         let shiftHeld = CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
+        let doubleClickHold = hotkeyListener.isDoubleClickHold
 
         cancelMaxRecordingTimer()
         guard let result = audioRecorder.stop() else {
@@ -149,7 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        processRecording(url: result.url, suppressAutoSubmit: shiftHeld)
+        processRecording(url: result.url, suppressAutoSubmit: shiftHeld || doubleClickHold, skipTranslation: false)
     }
 
     private func onHotkeyCancel() {
@@ -160,13 +161,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         log.info("Recording cancelled")
     }
 
-    private func processRecording(url: URL, suppressAutoSubmit: Bool = false) {
+    private func processRecording(url: URL, suppressAutoSubmit: Bool = false, skipTranslation: Bool = false) {
         isProcessing = true
         statusBar.setState(.processing)
 
         Task {
             do {
-                let result = try await transcriber.transcribe(wavURL: url)
+                let result = try await transcriber.transcribe(wavURL: url, skipTranslation: skipTranslation)
 
                 await MainActor.run {
                     if result.wasRetranscribed {
