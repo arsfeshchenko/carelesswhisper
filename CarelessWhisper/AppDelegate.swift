@@ -15,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioWatchdogTimer: Timer?
     private var consecutiveAudioFailures = 0
     private var onboarding: OnboardingWindow?
+    private var startSoundTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -117,9 +118,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         do {
             try audioRecorder.start()
-            SoundPlayer.play(hotkeyListener.isDoubleClickHold ? "Morse" : Settings.soundStart)
             statusBar.setState(.recording)
             startMaxRecordingTimer()
+            // Delay sound by 400ms so we know if it's a double-click-and-hold
+            SoundPlayer.play(Settings.soundStart)
+            // After 400ms, if it turned out to be a double-click-and-hold, play Funk too
+            startSoundTimer?.invalidate()
+            startSoundTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
+                guard let self, self.audioRecorder.isRecording, self.hotkeyListener.isDoubleClickHold else { return }
+                SoundPlayer.play("Funk")
+            }
             log.info("Recording started")
         } catch {
             log.error("Failed to start recording: \(error.localizedDescription)")
@@ -135,6 +143,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let shiftHeld = CGEventSource.flagsState(.combinedSessionState).contains(.maskShift)
         let doubleClickHold = hotkeyListener.isDoubleClickHold
 
+        startSoundTimer?.invalidate()
+        startSoundTimer = nil
         cancelMaxRecordingTimer()
         guard let result = audioRecorder.stop() else {
             statusBar.setState(.idle)
@@ -154,6 +164,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func onHotkeyCancel() {
+        startSoundTimer?.invalidate()
+        startSoundTimer = nil
         cancelMaxRecordingTimer()
         audioRecorder.cancel()
         statusBar.setState(.idle)

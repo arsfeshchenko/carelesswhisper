@@ -6,7 +6,7 @@ private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", categor
 final class Paster {
     private static let keyV: UInt16 = 9
     private static let keyReturn: UInt16 = 36
-    private static let clipboardRestoreDelay: TimeInterval = 1.5
+    private static let clipboardRestoreDelay: TimeInterval = 0.2
 
     func paste(text: String, autoSubmit: Bool) {
         let pb = NSPasteboard.general
