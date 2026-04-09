@@ -20,9 +20,10 @@ pkill -9 -f "CarelessWhisper" 2>/dev/null || true; sleep 0.5
 rm -rf "$DEST"
 cp -R "$DERIVED" "$DEST"
 
+ENTITLEMENTS="$SCRIPT_DIR/CarelessWhisper/CarelessWhisper.entitlements"
 echo "→ Signing with Developer ID (hardened runtime)..."
-find "$DEST" -name "*.dylib" -exec codesign --force --options runtime --sign "$CERT" {} \;
-codesign --force --options runtime --sign "$CERT" "$DEST"
+find "$DEST" -name "*.dylib" -exec codesign --force --options runtime --sign "$CERT" --entitlements "$ENTITLEMENTS" {} \;
+codesign --force --options runtime --sign "$CERT" --entitlements "$ENTITLEMENTS" "$DEST"
 
 echo "→ Notarizing..."
 cd /Applications && zip -r "$ZIP" CarelessWhisper.app
