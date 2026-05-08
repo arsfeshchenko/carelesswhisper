@@ -4,7 +4,7 @@ import os.log
 private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Audio")
 
 final class AudioRecorder {
-    private let engine = AVAudioEngine()
+    private var engine: AVAudioEngine?
     private var audioFile: AVAudioFile?
     private var recordingURL: URL?
     private var startTime: Date?
@@ -15,6 +15,9 @@ final class AudioRecorder {
 
     func start() throws {
         guard !isRecording else { return }
+
+        let newEngine = AVAudioEngine()
+        engine = newEngine
 
         let tempDir = NSTemporaryDirectory()
         let fileName = "carelesswhisper_\(UUID().uuidString).wav"
@@ -35,7 +38,7 @@ final class AudioRecorder {
             interleaved: true
         )
 
-        let inputNode = engine.inputNode
+        let inputNode = newEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
 
         guard let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
@@ -73,8 +76,8 @@ final class AudioRecorder {
             }
         }
 
-        engine.prepare()
-        try engine.start()
+        newEngine.prepare()
+        try newEngine.start()
         isRecording = true
         startTime = Date()
         log.info("Recording started")
@@ -84,8 +87,9 @@ final class AudioRecorder {
         guard isRecording else { return nil }
         isRecording = false
 
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        engine?.inputNode.removeTap(onBus: 0)
+        engine?.stop()
+        engine = nil
         audioFile = nil
 
         let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
@@ -99,8 +103,9 @@ final class AudioRecorder {
     func cancel() {
         guard isRecording else { return }
         isRecording = false
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        engine?.inputNode.removeTap(onBus: 0)
+        engine?.stop()
+        engine = nil
         audioFile = nil
         startTime = nil
         cleanup()
@@ -115,8 +120,8 @@ final class AudioRecorder {
     }
 
     func checkDeviceAvailable() -> Bool {
-        let inputNode = engine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
+        let probe = engine ?? AVAudioEngine()
+        let format = probe.inputNode.outputFormat(forBus: 0)
         return format.sampleRate > 0 && format.channelCount > 0
     }
 

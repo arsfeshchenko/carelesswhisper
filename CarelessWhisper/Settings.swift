@@ -58,7 +58,7 @@ enum Settings {
     @Setting(key: "soundRetranscribe", defaultValue: "Morse")
     static var soundRetranscribe: String
 
-    @Setting(key: "autoSubmit", defaultValue: false)
+    @Setting(key: "autoSubmit", defaultValue: true)
     static var autoSubmit: Bool
 
     @Setting(key: "minRecordingSeconds", defaultValue: 0.5)
