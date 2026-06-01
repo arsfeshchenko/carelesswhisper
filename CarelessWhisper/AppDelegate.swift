@@ -9,6 +9,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioRecorder: AudioRecorder!
     private var transcriber: Transcriber!
     private var paster: Paster!
+    private var fileTranscriber: FileTranscriber?
+    private var fileProgressWindow: FileTranscribeProgressWindow?
 
     private var isProcessing = false
     private var maxRecordingTimer: Timer?
@@ -100,6 +102,73 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hotkeyListener.stop()
             self?.hotkeyListener.start()
         }
+        statusBar.onTranscribeFile = { [weak self] url in
+            self?.startFileTranscription(sourceURL: url)
+        }
+    }
+
+    // MARK: - File Transcription
+
+    private func startFileTranscription(sourceURL: URL) {
+        guard fileTranscriber == nil else {
+            log.warning("File transcription already running, ignoring")
+            return
+        }
+        guard !Settings.apiKey.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = "No API key"
+            alert.informativeText = "Set your OpenAI API key from the menu first."
+            alert.runModal()
+            return
+        }
+
+        let transcriber = FileTranscriber()
+        let window = FileTranscribeProgressWindow(title: "Transcribing \(sourceURL.lastPathComponent)")
+        window.onCancel = { transcriber.isCancelled = true }
+        window.show()
+        fileTranscriber = transcriber
+        fileProgressWindow = window
+
+        Task {
+            do {
+                let outURL = try await transcriber.transcribe(
+                    sourceURL: sourceURL,
+                    language: "uk"
+                ) { progress in
+                    window.update(stage: progress.stage, fraction: progress.fraction)
+                }
+                await MainActor.run {
+                    window.close()
+                    self.fileTranscriber = nil
+                    self.fileProgressWindow = nil
+                    NSWorkspace.shared.open(outURL)
+                }
+            } catch {
+                await MainActor.run {
+                    window.close()
+                    self.fileTranscriber = nil
+                    self.fileProgressWindow = nil
+                    let isCancel = (error as? FileTranscriber.FileTranscriberError)
+                        .map { if case .cancelled = $0 { return true } else { return false } } ?? false
+                    if !isCancel {
+                        self.showErrorAlert(error)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Error Alert
+
+    /// Shows a native modal describing why transcription failed.
+    private func showErrorAlert(_ error: Error) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Transcription failed"
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     // MARK: - Push-to-Talk Workflow
@@ -197,6 +266,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     log.error("Transcription failed: \(error.localizedDescription)")
                     SoundPlayer.play(Settings.soundError)
                     statusBar.setState(.error)
+                    self.showErrorAlert(error)
                 }
             }
 

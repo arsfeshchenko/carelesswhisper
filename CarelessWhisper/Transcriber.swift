@@ -139,9 +139,39 @@ final class Transcriber {
 
         var errorDescription: String? {
             switch self {
-            case .noAPIKey: return "No API key configured"
-            case .invalidResponse: return "Invalid response from API"
-            case .apiError(let code, let msg): return "API error \(code): \(msg)"
+            case .noAPIKey:
+                return "No API key configured. Set your OpenAI key from the menu."
+            case .invalidResponse:
+                return "Got an invalid response from OpenAI. Try again."
+            case .apiError(let code, let rawBody):
+                return Self.humanize(statusCode: code, rawBody: rawBody)
+            }
+        }
+
+        /// Turns OpenAI's JSON error body into a sentence a human can act on.
+        private static func humanize(statusCode: Int, rawBody: String) -> String {
+            // Pull "error.message" / "error.code" out of the JSON body if present.
+            var apiMessage = ""
+            var apiCode = ""
+            if let data = rawBody.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let err = json["error"] as? [String: Any] {
+                apiMessage = (err["message"] as? String) ?? ""
+                apiCode = (err["code"] as? String) ?? ""
+            }
+
+            switch statusCode {
+            case 401:
+                return "Your OpenAI API key was rejected (401). Check that it's valid in the menu."
+            case 429 where apiCode == "insufficient_quota":
+                return "Your OpenAI account is out of credits. Add billing at platform.openai.com to keep transcribing."
+            case 429:
+                return "OpenAI is rate-limiting your requests (429). Wait a few seconds and try again."
+            case 500...599:
+                return "OpenAI had a server error (\(statusCode)). This is on their side — try again shortly."
+            default:
+                let detail = apiMessage.isEmpty ? rawBody : apiMessage
+                return "OpenAI request failed (\(statusCode)): \(detail)"
             }
         }
     }

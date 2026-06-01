@@ -43,6 +43,7 @@ final class StatusBarController {
     var onRemoveAPIKey: (() -> Void)?
     var onRestart: (() -> Void)?
     var onAccessibilityGranted: (() -> Void)?
+    var onTranscribeFile: ((URL) -> Void)?
 
     private var wasAccessibilityGranted: Bool
 
@@ -127,6 +128,10 @@ final class StatusBarController {
         let listenItem = NSMenuItem(title: "♪  Listen to Masterpiece", action: #selector(onClickListen), keyEquivalent: "")
         listenItem.target = self
         menu.addItem(listenItem)
+
+        let transcribeFileItem = NSMenuItem(title: "Transcribe Audio File…", action: #selector(onClickTranscribeFile), keyEquivalent: "")
+        transcribeFileItem.target = self
+        menu.addItem(transcribeFileItem)
 
         menu.addItem(.separator())
 
@@ -253,6 +258,18 @@ final class StatusBarController {
 
     @objc private func onClickListen() {
         NSWorkspace.shared.open(URL(string: "https://youtube.com/shorts/WkRH_4wJbhw?si=Lb0LnlyNzJfTMKMp")!)
+    }
+
+    @objc private func onClickTranscribeFile() {
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = NSOpenPanel()
+        panel.title = "Choose audio file to transcribe"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedFileTypes = ["m4a", "mp3", "wav", "mp4", "mpga", "mpeg", "webm", "aac"]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        onTranscribeFile?(url)
     }
 
     @objc private func onClickCheckUpdate() {
