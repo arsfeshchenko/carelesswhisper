@@ -9,7 +9,7 @@ private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", categor
 final class FileTranscriber: NSObject, URLSessionTaskDelegate {
     private let endpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
     private let chatEndpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
-    private let chunkSeconds: Double = 300  // 5 min per chunk → ~3.5 MB AAC, more granular progress
+    private let chunkSeconds: Double = 120  // 2 min per chunk → ~1.4 MB AAC, smaller requests avoid timeouts
     private let formatChunkChars = 6000     // input-side chunk size for GPT formatting pass
 
     /// Cancellation flag — set from the progress window to abort.
@@ -268,28 +268,32 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
             "temperature": 0.2
         ]
 
-        var request = URLRequest(url: chatEndpoint)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 300
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw FileTranscriberError.network("invalid response")
-        }
-        guard http.statusCode == 200 else {
-            let msg = String(data: data, encoding: .utf8) ?? "unknown"
-            log.error("GPT error \(http.statusCode): \(msg)")
-            throw FileTranscriberError.apiError(statusCode: http.statusCode, message: msg)
-        }
+        return try await withRetry(label: "GPT formatting") {
+            var request = URLRequest(url: self.chatEndpoint)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 300
+            request.httpBody = httpBody
 
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let content = (json?["choices"] as? [[String: Any]])?.first
-            .flatMap { $0["message"] as? [String: Any] }
-            .flatMap { $0["content"] as? String } ?? ""
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw FileTranscriberError.network("invalid response")
+            }
+            guard http.statusCode == 200 else {
+                let msg = String(data: data, encoding: .utf8) ?? "unknown"
+                log.error("GPT error \(http.statusCode): \(msg)")
+                throw FileTranscriberError.apiError(statusCode: http.statusCode, message: msg)
+            }
+
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let content = (json?["choices"] as? [[String: Any]])?.first
+                .flatMap { $0["message"] as? [String: Any] }
+                .flatMap { $0["content"] as? String } ?? ""
+            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
     }
 
     // MARK: - Internal helpers
@@ -355,13 +359,8 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
         language: String,
         onUploadProgress: @escaping (Double) -> Void
     ) async throws -> String {
+        // Build the multipart body once — it's identical across retry attempts.
         let boundary = UUID().uuidString
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 300
-
         var body = Data()
         let audioData = try Data(contentsOf: url)
 
@@ -376,24 +375,72 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
         body.append("\r\n".data(using: .utf8)!)
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
-        currentUploadHandler = onUploadProgress
-        defer { currentUploadHandler = nil }
+        return try await withRetry(label: "Whisper chunk") {
+            var request = URLRequest(url: self.endpoint)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 300
 
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        defer { session.finishTasksAndInvalidate() }
+            self.currentUploadHandler = onUploadProgress
+            defer { self.currentUploadHandler = nil }
 
-        let (data, response) = try await session.upload(for: request, from: body)
-        guard let http = response as? HTTPURLResponse else {
-            throw FileTranscriberError.network("invalid response")
+            let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+            defer { session.finishTasksAndInvalidate() }
+
+            let (data, response) = try await session.upload(for: request, from: body)
+            guard let http = response as? HTTPURLResponse else {
+                throw FileTranscriberError.network("invalid response")
+            }
+            guard http.statusCode == 200 else {
+                let msg = String(data: data, encoding: .utf8) ?? "unknown"
+                log.error("Whisper error \(http.statusCode): \(msg)")
+                throw FileTranscriberError.apiError(statusCode: http.statusCode, message: msg)
+            }
+
+            let text = String(data: data, encoding: .utf8) ?? ""
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        guard http.statusCode == 200 else {
-            let msg = String(data: data, encoding: .utf8) ?? "unknown"
-            log.error("Whisper error \(http.statusCode): \(msg)")
-            throw FileTranscriberError.apiError(statusCode: http.statusCode, message: msg)
-        }
+    }
 
-        let text = String(data: data, encoding: .utf8) ?? ""
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    // MARK: - Retry
+
+    /// Retries a network operation on transient failures (timeouts, dropped
+    /// connections, 429s, 5xx) with exponential backoff. Honours cancellation.
+    private func withRetry<T>(
+        maxAttempts: Int = 4,
+        label: String,
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            attempt += 1
+            do {
+                return try await operation()
+            } catch {
+                try checkCancelled()
+                guard attempt < maxAttempts, Self.isRetryable(error) else { throw error }
+                let delaySec = pow(2.0, Double(attempt))  // 2s, 4s, 8s
+                log.warning("\(label) failed (attempt \(attempt)/\(maxAttempts)): \(error.localizedDescription) — retrying in \(Int(delaySec))s")
+                try await Task.sleep(nanoseconds: UInt64(delaySec * 1_000_000_000))
+            }
+        }
+    }
+
+    private static func isRetryable(_ error: Error) -> Bool {
+        if let urlErr = error as? URLError {
+            switch urlErr.code {
+            case .timedOut, .networkConnectionLost, .cannotConnectToHost,
+                 .notConnectedToInternet, .dnsLookupFailed, .cannotFindHost:
+                return true
+            default:
+                return false
+            }
+        }
+        if let e = error as? FileTranscriberError, case .apiError(let code, _) = e {
+            return code == 429 || (500...599).contains(code)
+        }
+        return false
     }
 
     enum FileTranscriberError: LocalizedError {
