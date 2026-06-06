@@ -75,4 +75,7 @@ enum Settings {
 
     @Setting(key: "onboardingComplete", defaultValue: false)
     static var onboardingComplete: Bool
+
+    @Setting(key: "lastTranscript", defaultValue: "")
+    static var lastTranscript: String
 }

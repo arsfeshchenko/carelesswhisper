@@ -258,6 +258,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     let autoSubmit = suppressAutoSubmit ? false : Settings.autoSubmit
                     SoundPlayer.play(Settings.soundStart)
                     paster.paste(text: result.text, autoSubmit: autoSubmit)
+                    Settings.lastTranscript = result.text
+                    statusBar.refreshLastTranscript()
                     statusBar.setState(.success)
                     log.info("Transcribed: \(result.text.prefix(50))...")
                 }

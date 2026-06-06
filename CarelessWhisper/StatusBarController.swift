@@ -37,6 +37,7 @@ final class StatusBarController {
     private var apiKeyItem: NSMenuItem!
     private var removeApiKeyItem: NSMenuItem!
     private var autoSubmitItem: NSMenuItem!
+    private var copyLastItem: NSMenuItem!
 
     // Callbacks
     var onAPIKeyEntered: ((String) -> Void)?
@@ -121,6 +122,12 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
+        copyLastItem = NSMenuItem(title: "", action: #selector(onClickCopyLast), keyEquivalent: "")
+        copyLastItem.target = self
+        menu.addItem(copyLastItem)
+
+        menu.addItem(.separator())
+
         let updateItem = NSMenuItem(title: "Check for Updates", action: #selector(onClickCheckUpdate), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
@@ -187,6 +194,27 @@ final class StatusBarController {
         apiKeyItem.title = "\(apiOK ? "✓" : "  ")  API Key"
         autoSubmitItem.title = "\(Settings.autoSubmit ? "✓" : "  ")  Auto-submit (Enter)"
         removeApiKeyItem.isEnabled = apiOK
+        refreshLastTranscript()
+    }
+
+    func refreshLastTranscript() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let item = self.copyLastItem else { return }
+            let last = Settings.lastTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+            if last.isEmpty {
+                item.title = "Copy last transcript"
+                item.isEnabled = false
+                item.toolTip = nil
+            } else {
+                let preview = last.replacingOccurrences(of: "\n", with: " ")
+                let truncated = preview.count > 10
+                    ? String(preview.prefix(10)) + "…"
+                    : preview
+                item.title = "Copy last: \(truncated)"
+                item.isEnabled = true
+                item.toolTip = last
+            }
+        }
     }
 
     @objc private func onPermClick(_ sender: NSMenuItem) {
@@ -254,6 +282,15 @@ final class StatusBarController {
     @objc private func onClickRemoveAPIKey() {
         onRemoveAPIKey?()
         refreshPermissions()
+    }
+
+    @objc private func onClickCopyLast() {
+        let text = Settings.lastTranscript
+        guard !text.isEmpty else { return }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+        log.info("Copied last transcript to clipboard (\(text.count) chars)")
     }
 
     @objc private func onClickListen() {
