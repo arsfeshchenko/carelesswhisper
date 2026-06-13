@@ -64,6 +64,12 @@ final class Transcriber {
             body.appendMultipart(boundary: boundary, name: "language", value: language)
         }
 
+        // vocabulary biasing (optional) — nudges Whisper toward custom spellings
+        let vocab = Settings.vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !vocab.isEmpty {
+            body.appendMultipart(boundary: boundary, name: "prompt", value: vocab)
+        }
+
         // file field
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n".data(using: .utf8)!)

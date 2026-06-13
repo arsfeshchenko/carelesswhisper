@@ -64,7 +64,7 @@ enum Settings {
     @Setting(key: "minRecordingSeconds", defaultValue: 0.5)
     static var minRecordingSeconds: Double
 
-    @Setting(key: "maxRecordingSeconds", defaultValue: 300.0)
+    @Setting(key: "maxRecordingSeconds", defaultValue: 600.0)
     static var maxRecordingSeconds: Double
 
     @Setting(key: "soundsEnabled", defaultValue: true)
@@ -78,4 +78,22 @@ enum Settings {
 
     @Setting(key: "lastTranscript", defaultValue: "")
     static var lastTranscript: String
+
+    /// Comma-separated terms fed to Whisper's `prompt` param to bias spelling
+    /// (e.g. "Claude, Claude Code, Anthropic, Xcode"). Empty = no biasing.
+    @Setting(key: "vocabulary", defaultValue: "")
+    static var vocabulary: String
+
+    /// The stored vocabulary as a cleaned list of non-empty terms.
+    static var vocabularyTerms: [String] {
+        vocabularyTermsFrom(vocabulary)
+    }
+
+    /// Parse an arbitrary string (commas and/or newlines) into cleaned terms.
+    static func vocabularyTermsFrom(_ raw: String) -> [String] {
+        raw
+            .split(whereSeparator: { $0 == "," || $0 == "\n" })
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
 }

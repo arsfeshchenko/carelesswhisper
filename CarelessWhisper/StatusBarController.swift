@@ -38,6 +38,7 @@ final class StatusBarController {
     private var removeApiKeyItem: NSMenuItem!
     private var autoSubmitItem: NSMenuItem!
     private var copyLastItem: NSMenuItem!
+    private var vocabularyItem: NSMenuItem!
 
     // Callbacks
     var onAPIKeyEntered: ((String) -> Void)?
@@ -126,6 +127,10 @@ final class StatusBarController {
         copyLastItem.target = self
         menu.addItem(copyLastItem)
 
+        vocabularyItem = NSMenuItem(title: "", action: #selector(onClickVocabulary), keyEquivalent: "")
+        vocabularyItem.target = self
+        menu.addItem(vocabularyItem)
+
         menu.addItem(.separator())
 
         let updateItem = NSMenuItem(title: "Check for Updates", action: #selector(onClickCheckUpdate), keyEquivalent: "")
@@ -193,6 +198,10 @@ final class StatusBarController {
         microphoneItem.title = "\(micOK ? "✓" : "  ")  Microphone"
         apiKeyItem.title = "\(apiOK ? "✓" : "  ")  API Key"
         autoSubmitItem.title = "\(Settings.autoSubmit ? "✓" : "  ")  Auto-submit (Enter)"
+        let vocabCount = Settings.vocabularyTerms.count
+        vocabularyItem.title = vocabCount > 0
+            ? "Vocabulary (\(vocabCount))"
+            : "Vocabulary…"
         removeApiKeyItem.isEnabled = apiOK
         refreshLastTranscript()
     }
@@ -271,6 +280,43 @@ final class StatusBarController {
         }
 
         onAPIKeyEntered?(key)
+        refreshPermissions()
+    }
+
+    @objc private func onClickVocabulary() {
+        DispatchQueue.main.async { [weak self] in self?.showVocabularyAlert() }
+    }
+
+    private func showVocabularyAlert() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "Custom Vocabulary"
+        alert.informativeText = "Comma-separated words to spell correctly (names, brands, jargon). Whisper leans toward these.\n\nExample: Claude, Claude Code, Anthropic, Xcode"
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        // Exact clone of the API-key field (which has a working caret in this
+        // env): single-line, horizontally scrollable. A comma list scrolls fine.
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
+        textField.font = NSFont.systemFont(ofSize: 12)
+        textField.placeholderString = "Claude, Claude Code, Anthropic, Xcode"
+        textField.isEditable = true
+        textField.isSelectable = true
+        textField.usesSingleLineMode = true
+        textField.cell?.wraps = false
+        textField.cell?.isScrollable = true
+        textField.stringValue = Settings.vocabulary
+
+        alert.accessoryView = textField
+        alert.layout()
+        alert.window.initialFirstResponder = textField
+        alert.window.makeFirstResponder(textField)
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        // Normalize: collapse to clean comma-separated terms.
+        Settings.vocabulary = Settings.vocabularyTermsFrom(textField.stringValue).joined(separator: ", ")
         refreshPermissions()
     }
 

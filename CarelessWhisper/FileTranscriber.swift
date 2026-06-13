@@ -368,6 +368,12 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
         body.appendMultipart(boundary: boundary, name: "response_format", value: "text")
         body.appendMultipart(boundary: boundary, name: "language", value: language)
 
+        // vocabulary biasing (optional) — same custom spellings as push-to-talk
+        let vocab = Settings.vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !vocab.isEmpty {
+            body.appendMultipart(boundary: boundary, name: "prompt", value: vocab)
+        }
+
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"chunk.m4a\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: audio/mp4\r\n\r\n".data(using: .utf8)!)
