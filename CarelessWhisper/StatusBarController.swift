@@ -311,7 +311,17 @@ final class StatusBarController {
         alert.accessoryView = textField
         alert.layout()
         alert.window.initialFirstResponder = textField
-        alert.window.makeFirstResponder(textField)
+
+        // Menu-bar (accessory) apps often don't make the alert window key until
+        // runModal() spins its own runloop, so a caret set beforehand never
+        // appears. Firing makeFirstResponder from inside that loop (async runs
+        // after the window is key) reliably establishes the blinking caret.
+        // Don't touch window ordering here — runModal() owns presentation, and
+        // calling makeKeyAndOrderFront desyncs the modal session so the buttons
+        // stop ending it.
+        DispatchQueue.main.async {
+            alert.window.makeFirstResponder(textField)
+        }
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
