@@ -133,7 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let outURL = try await transcriber.transcribe(
                     sourceURL: sourceURL,
-                    language: "uk"
+                    language: nil  // nil → Whisper auto-detects the audio's language
                 ) { progress in
                     window.update(stage: progress.stage, fraction: progress.fraction)
                 }

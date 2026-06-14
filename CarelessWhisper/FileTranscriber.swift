@@ -37,7 +37,7 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
     /// Returns the URL of the saved .txt transcript.
     func transcribe(
         sourceURL: URL,
-        language: String,
+        language: String?,
         onProgress: @escaping (Progress) -> Void
     ) async throws -> URL {
         let apiKey = Settings.apiKey
@@ -356,7 +356,7 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
     private func sendChunk(
         url: URL,
         apiKey: String,
-        language: String,
+        language: String?,
         onUploadProgress: @escaping (Double) -> Void
     ) async throws -> String {
         // Build the multipart body once — it's identical across retry attempts.
@@ -366,7 +366,11 @@ final class FileTranscriber: NSObject, URLSessionTaskDelegate {
 
         body.appendMultipart(boundary: boundary, name: "model", value: Settings.whisperModel)
         body.appendMultipart(boundary: boundary, name: "response_format", value: "text")
-        body.appendMultipart(boundary: boundary, name: "language", value: language)
+
+        // language field (optional) — omit to let Whisper auto-detect the language
+        if let language = language {
+            body.appendMultipart(boundary: boundary, name: "language", value: language)
+        }
 
         // vocabulary biasing (optional) — same custom spellings as push-to-talk
         let vocab = Settings.vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
