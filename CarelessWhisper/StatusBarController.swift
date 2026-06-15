@@ -39,6 +39,7 @@ final class StatusBarController {
     private var autoSubmitItem: NSMenuItem!
     private var copyLastItem: NSMenuItem!
     private var vocabularyItem: NSMenuItem!
+    private var cancelProcessingItem: NSMenuItem!
 
     // Callbacks
     var onAPIKeyEntered: ((String) -> Void)?
@@ -46,6 +47,7 @@ final class StatusBarController {
     var onRestart: (() -> Void)?
     var onAccessibilityGranted: (() -> Void)?
     var onTranscribeFile: ((URL) -> Void)?
+    var onCancelProcessing: (() -> Void)?
 
     private var wasAccessibilityGranted: Bool
 
@@ -64,6 +66,7 @@ final class StatusBarController {
         DispatchQueue.main.async {
             self.state = newState
             self.animTime = 0
+            self.cancelProcessingItem?.isHidden = (newState != .processing)
 
             if newState == .success {
                 DispatchQueue.main.asyncAfter(deadline: .now() + self.successDuration) {
@@ -122,6 +125,12 @@ final class StatusBarController {
         menu.addItem(hintItem)
 
         menu.addItem(.separator())
+
+        // Shown only while a push-to-talk transcription is in flight (see setState).
+        cancelProcessingItem = NSMenuItem(title: "Cancel transcription", action: #selector(onClickCancelProcessing), keyEquivalent: "")
+        cancelProcessingItem.target = self
+        cancelProcessingItem.isHidden = true
+        menu.addItem(cancelProcessingItem)
 
         copyLastItem = NSMenuItem(title: "", action: #selector(onClickCopyLast), keyEquivalent: "")
         copyLastItem.target = self
@@ -283,6 +292,10 @@ final class StatusBarController {
         refreshPermissions()
     }
 
+    @objc private func onClickCancelProcessing() {
+        onCancelProcessing?()
+    }
+
     @objc private func onClickVocabulary() {
         DispatchQueue.main.async { [weak self] in self?.showVocabularyAlert() }
     }
@@ -296,21 +309,35 @@ final class StatusBarController {
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        // Exact clone of the API-key field (which has a working caret in this
-        // env): single-line, horizontally scrollable. A comma list scrolls fine.
-        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
-        textField.font = NSFont.systemFont(ofSize: 12)
-        textField.placeholderString = "Claude, Claude Code, Anthropic, Xcode"
-        textField.isEditable = true
-        textField.isSelectable = true
-        textField.usesSingleLineMode = true
-        textField.cell?.wraps = false
-        textField.cell?.isScrollable = true
-        textField.stringValue = Settings.vocabulary
+        // Multi-line editable text area so longer vocab lists are easy to scan
+        // and edit. Terms may be separated by newlines and/or commas — the
+        // parser (vocabularyTermsFrom) handles both.
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 140))
+        scrollView.borderType = .bezelBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
 
-        alert.accessoryView = textField
+        let textView = NSTextView(frame: scrollView.bounds)
+        textView.font = NSFont.systemFont(ofSize: 12)
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.textContainerInset = NSSize(width: 4, height: 6)
+        textView.textContainer?.widthTracksTextView = true
+        // Show the stored comma-separated list as-is; the box wraps long lists.
+        textView.string = Settings.vocabulary
+
+        scrollView.documentView = textView
+
+        alert.accessoryView = scrollView
         alert.layout()
-        alert.window.initialFirstResponder = textField
+        alert.window.initialFirstResponder = textView
 
         // Menu-bar (accessory) apps often don't make the alert window key until
         // runModal() spins its own runloop, so a caret set beforehand never
@@ -320,13 +347,13 @@ final class StatusBarController {
         // calling makeKeyAndOrderFront desyncs the modal session so the buttons
         // stop ending it.
         DispatchQueue.main.async {
-            alert.window.makeFirstResponder(textField)
+            alert.window.makeFirstResponder(textView)
         }
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         // Normalize: collapse to clean comma-separated terms.
-        Settings.vocabulary = Settings.vocabularyTermsFrom(textField.stringValue).joined(separator: ", ")
+        Settings.vocabulary = Settings.vocabularyTermsFrom(textView.string).joined(separator: ", ")
         refreshPermissions()
     }
 

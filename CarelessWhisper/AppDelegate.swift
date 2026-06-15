@@ -13,6 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var fileProgressWindow: FileTranscribeProgressWindow?
 
     private var isProcessing = false
+    private var processingTask: Task<Void, Never>?
     private var maxRecordingTimer: Timer?
     private var audioWatchdogTimer: Timer?
     private var consecutiveAudioFailures = 0
@@ -104,6 +105,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusBar.onTranscribeFile = { [weak self] url in
             self?.startFileTranscription(sourceURL: url)
+        }
+        statusBar.onCancelProcessing = { [weak self] in
+            self?.cancelProcessing()
         }
     }
 
@@ -246,9 +250,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         isProcessing = true
         statusBar.setState(.processing)
 
-        Task {
+        processingTask = Task {
             do {
                 let result = try await transcriber.transcribe(wavURL: url, skipTranslation: skipTranslation)
+
+                // Bail quietly if the user cancelled while the request finished.
+                try Task.checkCancellation()
 
                 await MainActor.run {
                     if result.wasRetranscribed {
@@ -263,6 +270,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     statusBar.setState(.success)
                     log.info("Transcribed: \(result.text.prefix(50))...")
                 }
+            } catch is CancellationError {
+                log.info("Transcription cancelled by user")
+            } catch let urlError as URLError where urlError.code == .cancelled {
+                log.info("Transcription request cancelled by user")
             } catch {
                 await MainActor.run {
                     log.error("Transcription failed: \(error.localizedDescription)")
@@ -277,8 +288,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             await MainActor.run {
                 self.isProcessing = false
+                self.processingTask = nil
             }
         }
+    }
+
+    /// Cancel an in-flight push-to-talk transcription (invoked from the menu).
+    /// Cancelling the Task aborts the URLSession request via Swift concurrency;
+    /// the task's catch handles it quietly, so we only reset UI state here.
+    private func cancelProcessing() {
+        guard isProcessing, let task = processingTask else { return }
+        log.info("User requested transcription cancel")
+        task.cancel()
+        processingTask = nil
+        isProcessing = false
+        statusBar.setState(.idle)
+        SoundPlayer.play(Settings.soundStop)
     }
 
     // MARK: - Max Recording Timer
