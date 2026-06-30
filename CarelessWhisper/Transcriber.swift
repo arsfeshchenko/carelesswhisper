@@ -10,6 +10,8 @@ struct TranscriptionResult {
 
 final class Transcriber {
     private let endpoint = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
+    // Whisper's translate endpoint renders any spoken language as English.
+    private let translateEndpoint = URL(string: "https://api.openai.com/v1/audio/translations")!
     private let okLanguages: Set<String> = ["english", "ukrainian"]
 
     func transcribe(wavURL: URL, skipTranslation: Bool = false) async throws -> TranscriptionResult {
@@ -18,32 +20,68 @@ final class Transcriber {
             throw TranscriberError.noAPIKey
         }
 
-        // First pass: verbose_json to get language
-        let (text, language) = try await sendRequest(
-            wavURL: wavURL,
-            apiKey: apiKey,
-            responseFormat: "verbose_json",
-            language: nil
-        )
+        switch Settings.outputLanguage {
+        case "en":
+            // Always English: Whisper's translations endpoint does speech → English.
+            let (text, _) = try await sendRequest(
+                wavURL: wavURL,
+                apiKey: apiKey,
+                responseFormat: "text",
+                language: nil,
+                endpoint: translateEndpoint
+            )
+            log.info("Forced English output")
+            return TranscriptionResult(text: cleanText(text), wasRetranscribed: false)
 
-        log.info("Detected language: '\(language ?? "nil")'")
-
-        // If language not in allowed set, translate to Ukrainian via GPT (unless skipped)
-        if !skipTranslation, let lang = language, !okLanguages.contains(lang.lowercased()) {
-            log.info("Detected language '\(lang)', translating to Ukrainian")
+        case "uk":
+            // Always Ukrainian: transcribe in the spoken language, then translate
+            // to Ukrainian via GPT unless it already came back as Ukrainian.
+            let (text, language) = try await sendRequest(
+                wavURL: wavURL,
+                apiKey: apiKey,
+                responseFormat: "verbose_json",
+                language: nil
+            )
+            log.info("Forced Ukrainian output (detected '\(language ?? "nil")')")
+            if let lang = language, lang.lowercased() == "ukrainian" {
+                return TranscriptionResult(text: cleanText(text), wasRetranscribed: false)
+            }
             let translated = try await translateToUkrainian(text: text, apiKey: apiKey)
-            return TranscriptionResult(text: cleanText(translated), wasRetranscribed: true)
-        }
+            return TranscriptionResult(text: cleanText(translated), wasRetranscribed: false)
 
-        return TranscriptionResult(text: cleanText(text), wasRetranscribed: false)
+        default:
+            // Auto (smart): detect language; translate non-EN/UK clips to Ukrainian.
+            // No vocab prompt here — it would bias language detection.
+            let (text, language) = try await sendRequest(
+                wavURL: wavURL,
+                apiKey: apiKey,
+                responseFormat: "verbose_json",
+                language: nil,
+                includeVocab: false
+            )
+
+            log.info("Detected language: '\(language ?? "nil")'")
+
+            // If language not in allowed set, translate to Ukrainian via GPT (unless skipped)
+            if !skipTranslation, let lang = language, !okLanguages.contains(lang.lowercased()) {
+                log.info("Detected language '\(lang)', translating to Ukrainian")
+                let translated = try await translateToUkrainian(text: text, apiKey: apiKey)
+                return TranscriptionResult(text: cleanText(translated), wasRetranscribed: true)
+            }
+
+            return TranscriptionResult(text: cleanText(text), wasRetranscribed: false)
+        }
     }
 
     private func sendRequest(
         wavURL: URL,
         apiKey: String,
         responseFormat: String,
-        language: String?
+        language: String?,
+        endpoint: URL? = nil,
+        includeVocab: Bool = true
     ) async throws -> (text: String, language: String?) {
+        let endpoint = endpoint ?? self.endpoint
         let boundary = UUID().uuidString
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -64,9 +102,11 @@ final class Transcriber {
             body.appendMultipart(boundary: boundary, name: "language", value: language)
         }
 
-        // vocabulary biasing (optional) — nudges Whisper toward custom spellings
+        // vocabulary biasing (optional) — nudges Whisper toward custom spellings.
+        // Skipped during Auto-mode detection: a non-English term in the prompt
+        // biases Whisper's language detection (false-positive Ukrainian).
         let vocab = Settings.vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !vocab.isEmpty {
+        if includeVocab && !vocab.isEmpty {
             body.appendMultipart(boundary: boundary, name: "prompt", value: vocab)
         }
 

@@ -79,6 +79,13 @@ enum Settings {
     @Setting(key: "lastTranscript", defaultValue: "")
     static var lastTranscript: String
 
+    /// Forced output language for push-to-talk transcription:
+    /// "auto" = smart (detect; translate non-EN/UK clips to Ukrainian),
+    /// "en"   = always English (via Whisper's audio/translations endpoint),
+    /// "uk"   = always Ukrainian (transcribe, then GPT-translate if needed).
+    @Setting(key: "outputLanguage", defaultValue: "auto")
+    static var outputLanguage: String
+
     /// Comma-separated terms fed to Whisper's `prompt` param to bias spelling
     /// (e.g. "Claude, Claude Code, Anthropic, Xcode"). Empty = no biasing.
     @Setting(key: "vocabulary", defaultValue: "")

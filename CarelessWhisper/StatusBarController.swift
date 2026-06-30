@@ -40,6 +40,9 @@ final class StatusBarController {
     private var copyLastItem: NSMenuItem!
     private var vocabularyItem: NSMenuItem!
     private var cancelProcessingItem: NSMenuItem!
+    private var langAutoItem: NSMenuItem!
+    private var langEnglishItem: NSMenuItem!
+    private var langUkrainianItem: NSMenuItem!
 
     // Callbacks
     var onAPIKeyEntered: ((String) -> Void)?
@@ -140,6 +143,24 @@ final class StatusBarController {
         vocabularyItem.target = self
         menu.addItem(vocabularyItem)
 
+        // Transcription language submenu (radio: exactly one active).
+        let langItem = NSMenuItem(title: "Transcription Language", action: nil, keyEquivalent: "")
+        let langMenu = NSMenu()
+        langAutoItem = NSMenuItem(title: "Auto (smart)", action: #selector(onSetOutputLanguage(_:)), keyEquivalent: "")
+        langAutoItem.target = self
+        langAutoItem.representedObject = "auto"
+        langEnglishItem = NSMenuItem(title: "Always English", action: #selector(onSetOutputLanguage(_:)), keyEquivalent: "")
+        langEnglishItem.target = self
+        langEnglishItem.representedObject = "en"
+        langUkrainianItem = NSMenuItem(title: "Always Ukrainian", action: #selector(onSetOutputLanguage(_:)), keyEquivalent: "")
+        langUkrainianItem.target = self
+        langUkrainianItem.representedObject = "uk"
+        langMenu.addItem(langAutoItem)
+        langMenu.addItem(langEnglishItem)
+        langMenu.addItem(langUkrainianItem)
+        langItem.submenu = langMenu
+        menu.addItem(langItem)
+
         menu.addItem(.separator())
 
         let updateItem = NSMenuItem(title: "Check for Updates", action: #selector(onClickCheckUpdate), keyEquivalent: "")
@@ -212,6 +233,7 @@ final class StatusBarController {
             ? "Vocabulary (\(vocabCount))"
             : "Vocabulary…"
         removeApiKeyItem.isEnabled = apiOK
+        refreshOutputLanguageItems()
         refreshLastTranscript()
     }
 
@@ -294,6 +316,20 @@ final class StatusBarController {
 
     @objc private func onClickCancelProcessing() {
         onCancelProcessing?()
+    }
+
+    @objc private func onSetOutputLanguage(_ sender: NSMenuItem) {
+        guard let mode = sender.representedObject as? String else { return }
+        Settings.outputLanguage = mode
+        refreshOutputLanguageItems()
+        log.info("Output language set to '\(mode)'")
+    }
+
+    private func refreshOutputLanguageItems() {
+        let mode = Settings.outputLanguage
+        langAutoItem?.state = (mode == "auto") ? .on : .off
+        langEnglishItem?.state = (mode == "en") ? .on : .off
+        langUkrainianItem?.state = (mode == "uk") ? .on : .off
     }
 
     @objc private func onClickVocabulary() {
