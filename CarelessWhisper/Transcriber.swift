@@ -121,17 +121,23 @@ final class Transcriber {
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
         request.httpBody = body
+        request.timeoutInterval = 60
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // The body is built once above — retries reuse it as-is, so the recorded
+        // audio is never lost to a transient network blip.
+        let data = try await withRetry(label: "Whisper") {
+            let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw TranscriberError.invalidResponse
-        }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw TranscriberError.invalidResponse
+            }
 
-        guard httpResponse.statusCode == 200 else {
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            log.error("API error \(httpResponse.statusCode): \(errorBody)")
-            throw TranscriberError.apiError(statusCode: httpResponse.statusCode, message: errorBody)
+            guard httpResponse.statusCode == 200 else {
+                let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+                log.error("API error \(httpResponse.statusCode): \(errorBody)")
+                throw TranscriberError.apiError(statusCode: httpResponse.statusCode, message: errorBody)
+            }
+            return data
         }
 
         if responseFormat == "verbose_json" {
@@ -142,6 +148,53 @@ final class Transcriber {
         } else {
             let text = String(data: data, encoding: .utf8) ?? ""
             return (text, nil)
+        }
+    }
+
+    /// Retries a network operation on transient failures (timeouts, dropped
+    /// connections, 429s, 5xx) with short backoff. Tuned faster than the file
+    /// path's since push-to-talk is interactive — worst case ~3s before failing.
+    /// Cancellation (the menu's Cancel item) breaks out immediately.
+    private func withRetry<T>(
+        maxAttempts: Int = 3,
+        label: String,
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            attempt += 1
+            do {
+                return try await operation()
+            } catch {
+                try Task.checkCancellation()
+                guard attempt < maxAttempts, Self.isRetryable(error) else { throw error }
+                let delaySec = Double(attempt)  // 1s, then 2s
+                log.warning("\(label) failed (attempt \(attempt)/\(maxAttempts)): \(error.localizedDescription) — retrying in \(Int(delaySec))s")
+                try await Task.sleep(nanoseconds: UInt64(delaySec * 1_000_000_000))
+            }
+        }
+    }
+
+    private static func isRetryable(_ error: Error) -> Bool {
+        if let urlErr = error as? URLError {
+            switch urlErr.code {
+            case .timedOut, .networkConnectionLost, .cannotConnectToHost,
+                 .notConnectedToInternet, .dnsLookupFailed, .cannotFindHost,
+                 .secureConnectionFailed, .requestBodyStreamExhausted:
+                return true
+            default:
+                return false
+            }
+        }
+        switch error as? TranscriberError {
+        case .apiError(let code, let body):
+            // Out of credits won't resolve by retrying — fail fast instead.
+            if code == 429, body.contains("insufficient_quota") { return false }
+            return code == 429 || (500...599).contains(code)
+        case .invalidResponse:
+            return true
+        default:
+            return false
         }
     }
 
@@ -161,10 +214,30 @@ final class Transcriber {
             "temperature": 0
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 30  // small JSON payload — no reason to hang for a minute
 
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let translated = (json?["choices"] as? [[String: Any]])?.first
+        // Translation is a best-effort enhancement: if it fails even after
+        // retries, fall back to the untranscribed original rather than losing
+        // the whole dictation. Cancellation still propagates.
+        let data: Data
+        do {
+            data = try await withRetry(label: "GPT translate") {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                    let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+                    throw TranscriberError.apiError(statusCode: http.statusCode, message: errorBody)
+                }
+                return data
+            }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            log.warning("Translation failed, returning original text: \(error.localizedDescription)")
+            return text
+        }
+
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let translated = ((json as? [String: Any])?["choices"] as? [[String: Any]])?.first
             .flatMap { $0["message"] as? [String: Any] }
             .flatMap { $0["content"] as? String } ?? text
         return translated
