@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import os.log
 
 private let log = Logger(subsystem: "com.arsfeshchenko.carelesswhisper", category: "Audio")
@@ -119,10 +120,33 @@ final class AudioRecorder {
         }
     }
 
+    /// Reports whether an audio input device exists, WITHOUT activating it.
+    ///
+    /// This used to do `(engine ?? AVAudioEngine()).inputNode.outputFormat(...)`.
+    /// Touching `inputNode` makes CoreAudio spin up the input HAL and the
+    /// throwaway engine then tears it down — a system-wide audio device
+    /// reconfiguration. Fired by the 37s watchdog it stuttered audio and video
+    /// playback in *other* apps. A HAL property read costs nothing and never
+    /// opens the device.
     func checkDeviceAvailable() -> Bool {
-        let probe = engine ?? AVAudioEngine()
-        let format = probe.inputNode.outputFormat(forBus: 0)
-        return format.sampleRate > 0 && format.channelCount > 0
+        // If we're mid-recording the engine is already live — reuse it, since
+        // that costs nothing extra and proves the device is present.
+        if let engine = engine {
+            let format = engine.inputNode.outputFormat(forBus: 0)
+            return format.sampleRate > 0 && format.channelCount > 0
+        }
+
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
+        )
+        return status == noErr && deviceID != AudioDeviceID(kAudioObjectUnknown)
     }
 
     enum RecorderError: Error {

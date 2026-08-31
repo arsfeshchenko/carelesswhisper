@@ -16,8 +16,8 @@ final class StatusBarController {
     private let menu = NSMenu()
 
     private var animTimer: Timer?
+    private var permTimer: Timer?
     private var animTime: TimeInterval = 0
-    private var permCheckCounter: Int = 0
 
     private(set) var state: AppState = .idle
 
@@ -28,7 +28,7 @@ final class StatusBarController {
     private let opacityMax: CGFloat = 1.0
     private let successDuration: TimeInterval = 1.5
     private let errorDuration: TimeInterval = 2.0
-    private let permCheckInterval = 300  // ticks (~5s at 60fps)
+    private let permCheckSeconds: TimeInterval = 5.0
 
     // Menu items
     private var versionItem: NSMenuItem!
@@ -70,6 +70,8 @@ final class StatusBarController {
             self.state = newState
             self.animTime = 0
             self.cancelProcessingItem?.isHidden = (newState != .processing)
+            self.syncAnimationTimer()
+            self.updateIcon()   // static states are drawn once, here
 
             if newState == .success {
                 DispatchQueue.main.asyncAfter(deadline: .now() + self.successDuration) {
@@ -443,20 +445,39 @@ final class StatusBarController {
     // MARK: - Animation
 
     private func startAnimation() {
-        animTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / animFPS, repeats: true) { [weak self] _ in
-            self?.tick()
+        // Permission polling is independent of drawing — a slow timer is plenty.
+        permTimer = Timer.scheduledTimer(withTimeInterval: permCheckSeconds, repeats: true) { [weak self] _ in
+            self?.refreshPermissions()
+        }
+        syncAnimationTimer()
+    }
+
+    /// Only recording and processing actually animate; idle/success/error are
+    /// static images.
+    private static func stateAnimates(_ s: AppState) -> Bool {
+        switch s {
+        case .recording, .processing: return true
+        case .idle, .success, .error: return false
+        }
+    }
+
+    /// Runs the 60 fps timer only while the icon is animating. Previously it ran
+    /// forever, re-rendering a fresh NSImage 60x/s even when idle — which burned
+    /// CPU and forced WindowServer to re-composite the menu bar constantly.
+    private func syncAnimationTimer() {
+        if Self.stateAnimates(state) {
+            guard animTimer == nil else { return }
+            animTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / animFPS, repeats: true) { [weak self] _ in
+                self?.tick()
+            }
+        } else {
+            animTimer?.invalidate()
+            animTimer = nil
         }
     }
 
     private func tick() {
         animTime += 1.0 / animFPS
-        permCheckCounter += 1
-
-        if permCheckCounter >= permCheckInterval {
-            permCheckCounter = 0
-            refreshPermissions()
-        }
-
         updateIcon()
     }
 
