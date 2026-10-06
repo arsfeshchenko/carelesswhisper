@@ -37,6 +37,7 @@ final class StatusBarController {
     private var apiKeyItem: NSMenuItem!
     private var removeApiKeyItem: NSMenuItem!
     private var autoSubmitItem: NSMenuItem!
+    private var soundsItem: NSMenuItem!
     private var copyLastItem: NSMenuItem!
     private var vocabularyItem: NSMenuItem!
     private var cancelProcessingItem: NSMenuItem!
@@ -199,6 +200,10 @@ final class StatusBarController {
         autoSubmitItem.target = self
         menu.addItem(autoSubmitItem)
 
+        soundsItem = NSMenuItem(title: "", action: #selector(onToggleSounds(_:)), keyEquivalent: "")
+        soundsItem.target = self
+        menu.addItem(soundsItem)
+
         menu.addItem(.separator())
 
         removeApiKeyItem = NSMenuItem(title: "Remove API key", action: #selector(onClickRemoveAPIKey), keyEquivalent: "")
@@ -230,6 +235,7 @@ final class StatusBarController {
         microphoneItem.title = "\(micOK ? "✓" : "  ")  Microphone"
         apiKeyItem.title = "\(apiOK ? "✓" : "  ")  API Key"
         autoSubmitItem.title = "\(Settings.autoSubmit ? "✓" : "  ")  Auto-submit (Enter)"
+        soundsItem.title = "\(Settings.soundsEnabled ? "✓" : "  ")  Sounds"
         let vocabCount = Settings.vocabularyTerms.count
         vocabularyItem.title = vocabCount > 0
             ? "Vocabulary (\(vocabCount))"
@@ -392,6 +398,13 @@ final class StatusBarController {
 
         // Normalize: collapse to clean comma-separated terms.
         Settings.vocabulary = Settings.vocabularyTermsFrom(textView.string).joined(separator: ", ")
+        refreshPermissions()
+    }
+
+    /// Mute/unmute every app sound. Persisted in UserDefaults by @Setting, so
+    /// the choice survives a restart.
+    @objc private func onToggleSounds(_ sender: NSMenuItem) {
+        Settings.soundsEnabled.toggle()
         refreshPermissions()
     }
 
