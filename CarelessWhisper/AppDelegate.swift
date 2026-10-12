@@ -302,6 +302,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 log.info("Transcription cancelled by user")
             } catch let urlError as URLError where urlError.code == .cancelled {
                 log.info("Transcription request cancelled by user")
+            } catch let e as Transcriber.TranscriberError where Self.isTooShortAudio(e) {
+                // Cleared the local misclick gate but fell under OpenAI's 0.1s
+                // floor — engine start-up eats part of a short press. That's a
+                // misclick by another name, so stay silent instead of alerting.
+                log.info("Clip under OpenAI's minimum length, ignoring")
+                await MainActor.run { self.statusBar.setState(.idle) }
             } catch {
                 await MainActor.run {
                     log.error("Transcription failed: \(error.localizedDescription)")
@@ -319,6 +325,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self.processingTask = nil
             }
         }
+    }
+
+    private static func isTooShortAudio(_ e: Transcriber.TranscriberError) -> Bool {
+        if case .apiError(let code, let body) = e {
+            return code == 400 && body.lowercased().contains("too short")
+        }
+        return false
     }
 
     /// Cancel an in-flight push-to-talk transcription (invoked from the menu).
