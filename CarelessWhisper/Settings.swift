@@ -20,7 +20,12 @@ struct Setting<T> {
 
     var wrappedValue: T {
         get { UserDefaults.standard.object(forKey: key) as? T ?? defaultValue }
-        set { UserDefaults.standard.set(newValue, forKey: key) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: key)
+            // Flush now. A hard Mac restart can kill the app before macOS
+            // writes pending defaults to disk, losing the just-made choice.
+            UserDefaults.standard.synchronize()
+        }
     }
 }
 
